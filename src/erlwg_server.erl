@@ -85,7 +85,7 @@ code_change(_OldVsn, State, _Extra) ->
     death | {got, atom(), binary()}.
 process_get(UpdatePid, ResourceName, URL, TransformFun) ->
   case get_URL(URL) of
-    error -> death;
+    error -> TransformFun(death);
       Got -> Transformed = TransformFun(Got),
              UpdatePid ! {got, ResourceName, Transformed},
              Transformed
