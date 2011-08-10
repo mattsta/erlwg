@@ -1,4 +1,4 @@
--module(rlwg_server).
+-module(erlwg_server).
 -behaviour(gen_server).
 
 -compile(export_all).

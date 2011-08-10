@@ -1,13 +1,13 @@
-{application, rlwg,
+{application, erlwg,
  [
-  {description, "rlwg - Rate Limiting Web Getter"},
+  {description, "erlwg - Erlang Rate Limiting Web Getter"},
   {vsn, "0.3"},
   {modules, []},
-  {registered, [rlwg_sup]},
+  {registered, [erlwg_sup]},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, {rlwg_app, []}},
+  {mod, {erlwg_app, []}},
   {env, []}
  ]}.

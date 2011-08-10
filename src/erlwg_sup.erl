@@ -1,4 +1,4 @@
--module(rlwg_sup).
+-module(erlwg_sup).
 
 -behaviour(supervisor).
 
@@ -16,9 +16,9 @@ start_getter(Name, Interval) when is_atom(Name) andalso is_integer(Interval) ->
 
 init([]) ->
 
-  WG = {rlwg_server,
-        {rlwg_server, start_link, []},
-        permanent, 5000, worker, [rlwg_server]},
+  WG = {erlwg_server,
+        {erlwg_server, start_link, []},
+        permanent, 5000, worker, [erlwg_server]},
   Processes = [WG],
 
   Strategy = {simple_one_for_one, 10, 10},
