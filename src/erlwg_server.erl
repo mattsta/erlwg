@@ -42,15 +42,16 @@ handle_call({get, ResourceName, URL},_From,#state{interval=I,cache=C}=State) ->
                {_, Contents} -> Contents
              end,
   case WhatToDo of
-    pg -> Got = process_get(self(), ResourceName, URL),
-          NewState = update_cache_state(ResourceName, Got, State),
-          {reply, Got, NewState};
-    {pg, C} -> spawn(fun() -> process_get(self(), ResourceName, URL) end),
-                % NewState is here so we bump the last updated time.
-                % This makes sure we only spawn one get every > Interval seconds
-                NewState = update_cache_state(ResourceName, C, State),
-               {reply, C, NewState};
-    C -> {reply, C, State}
+            pg -> Got = process_get(self(), ResourceName, URL),
+                  NewState = update_cache_state(ResourceName, Got, State),
+                  {reply, Got, NewState};
+    {pg, Data} -> Self = self(),
+                  spawn(fun() -> process_get(Self, ResourceName, URL) end),
+                  % NewState is here so we bump the last updated time.
+                  % Make sure we only spawn one get every > Interval seconds.
+                  NewState = update_cache_state(ResourceName, Data, State),
+                 {reply, Data, NewState};
+          Data -> {reply, Data, State}
   end.
 
 handle_cast(_Msg, State) ->
@@ -77,7 +78,8 @@ code_change(_OldVsn, State, _Extra) ->
 process_get(UpdatePid, ResourceName, URL) ->
   case get_URL(URL) of
     error -> death;
-      Got -> UpdatePid ! {got, ResourceName, Got}
+      Got -> UpdatePid ! {got, ResourceName, Got},
+             Got
   end.
 
 n2s() -> now_to_seconds(now()).
@@ -86,7 +88,7 @@ now_to_seconds({Mega, Sec, _}) ->
   (Mega * 1000000) + Sec.
 
 update_cache_state(Name, Contents, #state{cache = C} = State) ->
-  State#state{cache = lists:keystore(Name, 1, C, {Name, n2s(), Contents})}.
+  State#state{cache = lists:keystore(Name, 1, C, {Name, {n2s(), Contents}})}.
 
 get_URL(URL) ->
   case ibrowse:send_req(URL, [], get, [], [{response_format, binary}], 3000) of
