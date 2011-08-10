@@ -1,0 +1,13 @@
+{application, rlwg,
+ [
+  {description, "rlwg - Rate Limiting Web Getter"},
+  {vsn, "0.3"},
+  {modules, []},
+  {registered, [rlwg_sup]},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, {rlwg_app, []}},
+  {env, []}
+ ]}.
