@@ -9,11 +9,12 @@
          handle_info/2, terminate/2, code_change/3]).
 
 %% api callbacks
--export([start_link/2, get/3]).
+-export([start_link/2, start_link/3, get/3]).
 
 -type epoch() :: pos_integer().
 
 -record(state, {interval         :: pos_integer(),
+                tfun             :: function(),
                 cache            :: [{atom(), {epoch(), binary()}}]
                }).
 
@@ -21,7 +22,11 @@
 %%% api callbacks
 %%%--------------------------------------------------------------------
 start_link(GenServerName, Interval) when is_integer(Interval) ->
-  gen_server:start_link({local, GenServerName}, ?MODULE, [Interval], []).
+  start_link(GenServerName, Interval, fun(E) -> E end).
+
+start_link(GenServerName, Interval, TransformFun) ->
+  gen_server:start_link({local, GenServerName}, ?MODULE,
+                        [Interval, TransformFun], []).
 
 get(Server, ResourceName, URL) ->
   gen_server:call(Server, {get, ResourceName, URL}).
@@ -30,11 +35,13 @@ get(Server, ResourceName, URL) ->
 %%% gen_server callbacks
 %%%--------------------------------------------------------------------
 
-init([Interval]) ->
+init([Interval, TransformFun]) ->
   {ok, #state{interval = Interval,
+              tfun = TransformFun,
               cache = []}}.
 
-handle_call({get, ResourceName, URL},_From,#state{interval=I,cache=C}=State) ->
+handle_call({get, ResourceName, URL}, _From,
+    #state{interval=I, cache=C, tfun=F} = State) ->
   Now = n2s(),
   WhatToDo = case proplists:get_value(ResourceName, C) of
                undefined -> pg;
@@ -42,11 +49,11 @@ handle_call({get, ResourceName, URL},_From,#state{interval=I,cache=C}=State) ->
                {_, Contents} -> Contents
              end,
   case WhatToDo of
-            pg -> Got = process_get(self(), ResourceName, URL),
+            pg -> Got = process_get(self(), ResourceName, URL, F),
                   NewState = update_cache_state(ResourceName, Got, State),
                   {reply, Got, NewState};
     {pg, Data} -> Self = self(),
-                  spawn(fun() -> process_get(Self, ResourceName, URL) end),
+                  spawn(fun() -> process_get(Self, ResourceName, URL, F) end),
                   % NewState is here so we bump the last updated time.
                   % Make sure we only spawn one get every > Interval seconds.
                   NewState = update_cache_state(ResourceName, Data, State),
@@ -74,12 +81,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%% URL Getting
 %%%--------------------------------------------------------------------
 
--spec process_get(any(), atom(), list()) -> death | {got, atom(), binary()}.
-process_get(UpdatePid, ResourceName, URL) ->
+-spec process_get(any(), atom(), list(), function()) ->
+    death | {got, atom(), binary()}.
+process_get(UpdatePid, ResourceName, URL, TransformFun) ->
   case get_URL(URL) of
     error -> death;
-      Got -> UpdatePid ! {got, ResourceName, Got},
-             Got
+      Got -> Transformed = TransformFun(Got),
+             UpdatePid ! {got, ResourceName, Transformed},
+             Transformed
   end.
 
 n2s() -> now_to_seconds(now()).

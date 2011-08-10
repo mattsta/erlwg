@@ -3,7 +3,7 @@
 -behaviour(supervisor).
 
 %% External exports
--export([start_link/0, start_getter/2]).
+-export([start_link/0, start_getter/2, start_getter/3]).
 
 %% supervisor callbacks
 -export([init/1]).
@@ -13,6 +13,12 @@ start_link() ->
 
 start_getter(Name, Interval) when is_atom(Name) andalso is_integer(Interval) ->
   supervisor:start_child(?MODULE, [Name, Interval]).
+
+start_getter(Name, Interval, TransformFun)
+    when is_atom(Name) andalso
+         is_integer(Interval) andalso
+         is_function(TransformFun) ->
+  supervisor:start_child(?MODULE, [Name, Interval, TransformFun]).
 
 init([]) ->
 
