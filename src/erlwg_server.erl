@@ -100,7 +100,7 @@ update_cache_state(Name, Contents, #state{cache = C} = State) ->
   State#state{cache = lists:keystore(Name, 1, C, {Name, {n2s(), Contents}})}.
 
 get_URL(URL) ->
-  case ibrowse:send_req(URL, [], get, [], [{response_format, binary}], 3000) of
-    {ok, _, _, Body} -> Body;
-                   _ -> error
+  case httpc:request(get, {URL, []}, [], [{body_format, binary}]) of
+    {ok, {_, _, Body}} -> Body;
+                     _ -> error
   end.
